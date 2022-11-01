@@ -1,4 +1,14 @@
-import { Anchor, Button, H1, Paragraph, Separator, Sheet, XStack, YStack } from '@my/ui'
+import {
+  AlertDialog,
+  Anchor,
+  Button,
+  H1,
+  Paragraph,
+  Separator,
+  Sheet,
+  XStack,
+  YStack,
+} from '@my/ui'
 import { ChevronDown, ChevronUp } from '@tamagui/lucide-icons'
 import React, { useState } from 'react'
 import { useLink } from 'solito/link'
@@ -33,6 +43,23 @@ export function HomeScreen() {
 
       <XStack>
         <Button {...linkProps}>Link to user</Button>
+        <AlertDialog>
+          <AlertDialog.Trigger asChild>
+            <Button>Open Dialog</Button>
+          </AlertDialog.Trigger>
+
+          <AlertDialog.Portal>
+            <AlertDialog.Content>
+              <AlertDialog.Title>Alert Dialog</AlertDialog.Title>
+              <AlertDialog.Description>
+                This is an alert dialog. It can be used to show important information to the user.
+              </AlertDialog.Description>
+              <AlertDialog.Cancel asChild>
+                <Button>Cancel</Button>
+              </AlertDialog.Cancel>
+            </AlertDialog.Content>
+          </AlertDialog.Portal>
+        </AlertDialog>
       </XStack>
 
       <SheetDemo />
