@@ -4726,376 +4726,391 @@ var require_Sheet = __commonJS({
     var ParentSheetContext = (0, import_react.createContext)({
       zIndex: 40
     });
+    var useSheetContoller = /* @__PURE__ */ __name(() => {
+      const controller = (0, import_react.useContext)(SheetControllerContext);
+      const isHidden = (controller == null ? void 0 : controller.hidden) || false;
+      const isShowingNonSheet = isHidden && (controller == null ? void 0 : controller.open);
+      return {
+        controller,
+        isHidden,
+        isShowingNonSheet
+      };
+    }, "useSheetContoller");
     var Sheet = (0, import_core.withStaticProperties)(
-      (0, import_core.themeable)(
-        (0, import_react.forwardRef)(/* @__PURE__ */ __name(function Sheet2(props, ref) {
-          const parentSheet = (0, import_react.useContext)(ParentSheetContext);
-          const {
-            __scopeSheet,
-            snapPoints: snapPointsProp = [80],
-            open: openProp,
-            defaultOpen,
-            children: childrenProp,
-            position: positionProp,
-            onPositionChange,
-            onOpenChange,
-            defaultPosition,
-            dismissOnOverlayPress = true,
-            animationConfig,
-            dismissOnSnapToBottom = false,
-            disableDrag: disableDragProp,
-            modal = false,
-            handleDisableScroll = true,
-            zIndex = parentSheet.zIndex + 1
-          } = props;
-          if (process.env.NODE_ENV === "development") {
-            if (snapPointsProp.some((p) => p < 0 || p > 100)) {
-              console.warn(
-                `\u26A0\uFE0F Invalid snapPoint given, snapPoints must be between 0 and 100, equal to percent height of frame`
-              );
-            }
+      (0, import_react.forwardRef)(/* @__PURE__ */ __name(function Sheet2(props, ref) {
+        const { isShowingNonSheet } = useSheetContoller();
+        if (isShowingNonSheet) {
+          return null;
+        }
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SheetImplementation, {
+          ref,
+          ...props
+        });
+      }, "Sheet2")),
+      sheetComponents
+    );
+    var SheetImplementation = (0, import_core.themeable)(
+      (0, import_react.forwardRef)(/* @__PURE__ */ __name(function SheetImplementation2(props, ref) {
+        const parentSheet = (0, import_react.useContext)(ParentSheetContext);
+        const { isHidden, controller } = useSheetContoller();
+        const {
+          __scopeSheet,
+          snapPoints: snapPointsProp = [80],
+          open: openProp,
+          defaultOpen,
+          children: childrenProp,
+          position: positionProp,
+          onPositionChange,
+          onOpenChange,
+          defaultPosition,
+          dismissOnOverlayPress = true,
+          animationConfig,
+          dismissOnSnapToBottom = false,
+          disableDrag: disableDragProp,
+          modal = false,
+          handleDisableScroll = true,
+          zIndex = parentSheet.zIndex + 1
+        } = props;
+        if (process.env.NODE_ENV === "development") {
+          if (snapPointsProp.some((p) => p < 0 || p > 100)) {
+            console.warn(
+              `\u26A0\uFE0F Invalid snapPoint given, snapPoints must be between 0 and 100, equal to percent height of frame`
+            );
           }
-          const driver = (0, import_core.getAnimationDriver)();
-          if (!driver) {
-            throw new Error(`Must set animations in tamagui.config.ts`);
+        }
+        const driver = (0, import_core.getAnimationDriver)();
+        if (!driver) {
+          throw new Error(`Must set animations in tamagui.config.ts`);
+        }
+        const disableDrag = disableDragProp ?? (controller == null ? void 0 : controller.disableDrag);
+        const themeName = (0, import_core.useThemeName)();
+        const contentRef = import_react.default.useRef(null);
+        const scrollBridge = (0, import_use_constant.useConstant)(() => ({
+          enabled: false,
+          y: 0,
+          paneY: 0,
+          paneMinY: 0,
+          scrollStartY: -1,
+          drag: () => {
+          },
+          release: () => {
+          },
+          scrollLock: false
+        }));
+        const onOpenChangeInternal = /* @__PURE__ */ __name((val) => {
+          var _a;
+          (_a = controller == null ? void 0 : controller.onOpenChange) == null ? void 0 : _a.call(controller, val);
+          onOpenChange == null ? void 0 : onOpenChange(val);
+        }, "onOpenChangeInternal");
+        const [open, setOpen] = (0, import_use_controllable_state.useControllableState)({
+          prop: (controller == null ? void 0 : controller.open) ?? openProp,
+          defaultProp: defaultOpen || true,
+          onChange: onOpenChangeInternal,
+          strategy: "most-recent-wins"
+        });
+        const [frameSize, setFrameSize] = (0, import_react.useState)(0);
+        const snapPoints = (0, import_react.useMemo)(
+          () => dismissOnSnapToBottom ? [...snapPointsProp, 0] : snapPointsProp,
+          [JSON.stringify(snapPointsProp), dismissOnSnapToBottom]
+        );
+        const [position_, setPosition_] = (0, import_use_controllable_state.useControllableState)({
+          prop: positionProp,
+          defaultProp: defaultPosition || (open ? 0 : -1),
+          onChange: onPositionChange,
+          strategy: "most-recent-wins"
+        });
+        const position = open === false ? -1 : position_;
+        if (open && dismissOnSnapToBottom && position === snapPoints.length - 1) {
+          setPosition_(0);
+        }
+        const setPosition = (0, import_react.useCallback)(
+          (next) => {
+            if (dismissOnSnapToBottom && next === snapPoints.length - 1) {
+              setOpen(false);
+            } else {
+              setPosition_(next);
+            }
+          },
+          [dismissOnSnapToBottom, snapPoints.length, setPosition_, setOpen]
+        );
+        const animatedNumber = driver.useAnimatedNumber(HIDDEN_SIZE);
+        const at = (0, import_react.useRef)(0);
+        driver.useAnimatedNumberReaction(animatedNumber, (value) => {
+          at.current = value;
+          scrollBridge.paneY = value;
+        });
+        const [isResizing, setIsResizing] = (0, import_react.useState)(true);
+        (0, import_core.useIsomorphicLayoutEffect)(() => {
+          if (!isResizing) {
+            setIsResizing(true);
           }
-          const controller = (0, import_react.useContext)(SheetControllerContext);
-          const isHidden = (controller == null ? void 0 : controller.hidden) || false;
-          const disableDrag = disableDragProp ?? (controller == null ? void 0 : controller.disableDrag);
-          const themeName = (0, import_core.useThemeName)();
-          const contentRef = import_react.default.useRef(null);
-          const scrollBridge = (0, import_use_constant.useConstant)(() => ({
-            enabled: false,
-            y: 0,
-            paneY: 0,
-            paneMinY: 0,
-            scrollStartY: -1,
-            drag: () => {
-            },
-            release: () => {
-            },
-            scrollLock: false
-          }));
-          const onOpenChangeInternal = /* @__PURE__ */ __name((val) => {
-            var _a;
-            (_a = controller == null ? void 0 : controller.onOpenChange) == null ? void 0 : _a.call(controller, val);
-            onOpenChange == null ? void 0 : onOpenChange(val);
-          }, "onOpenChangeInternal");
-          const [open, setOpen] = (0, import_use_controllable_state.useControllableState)({
-            prop: (controller == null ? void 0 : controller.open) ?? openProp,
-            defaultProp: defaultOpen || true,
-            onChange: onOpenChangeInternal,
-            strategy: "most-recent-wins"
-          });
-          const [frameSize, setFrameSize] = (0, import_react.useState)(0);
-          const snapPoints = (0, import_react.useMemo)(
-            () => dismissOnSnapToBottom ? [...snapPointsProp, 0] : snapPointsProp,
-            [JSON.stringify(snapPointsProp), dismissOnSnapToBottom]
-          );
-          const [position_, setPosition_] = (0, import_use_controllable_state.useControllableState)({
-            prop: positionProp,
-            defaultProp: defaultPosition || (open ? 0 : -1),
-            onChange: onPositionChange,
-            strategy: "most-recent-wins"
-          });
-          const position = open === false ? -1 : position_;
-          if (open && dismissOnSnapToBottom && position === snapPoints.length - 1) {
-            setPosition_(0);
+        }, [modal]);
+        function stopSpring() {
+          animatedNumber.stop();
+          if (scrollBridge.onFinishAnimate) {
+            scrollBridge.onFinishAnimate();
+            scrollBridge.onFinishAnimate = void 0;
           }
-          const setPosition = (0, import_react.useCallback)(
-            (next) => {
-              if (dismissOnSnapToBottom && next === snapPoints.length - 1) {
-                setOpen(false);
-              } else {
-                setPosition_(next);
-              }
-            },
-            [dismissOnSnapToBottom, snapPoints.length, setPosition_, setOpen]
-          );
-          const animatedNumber = driver.useAnimatedNumber(HIDDEN_SIZE);
-          const at = (0, import_react.useRef)(0);
-          driver.useAnimatedNumberReaction(animatedNumber, (value) => {
-            at.current = value;
-            scrollBridge.paneY = value;
-          });
-          const [isResizing, setIsResizing] = (0, import_react.useState)(true);
-          (0, import_core.useIsomorphicLayoutEffect)(() => {
-            if (!isResizing) {
-              setIsResizing(true);
-            }
-          }, [modal]);
-          function stopSpring() {
-            animatedNumber.stop();
-            if (scrollBridge.onFinishAnimate) {
-              scrollBridge.onFinishAnimate();
-              scrollBridge.onFinishAnimate = void 0;
-            }
+        }
+        __name(stopSpring, "stopSpring");
+        const shouldSetPositionOpen = open && position < 0;
+        (0, import_react.useEffect)(() => {
+          if (shouldSetPositionOpen) {
+            setPosition(0);
           }
-          __name(stopSpring, "stopSpring");
-          const shouldSetPositionOpen = open && position < 0;
-          (0, import_react.useEffect)(() => {
-            if (shouldSetPositionOpen) {
-              setPosition(0);
+        }, [setPosition, shouldSetPositionOpen]);
+        const positions = (0, import_react.useMemo)(
+          () => snapPoints.map((point) => getPercentSize(point, frameSize)),
+          [frameSize, snapPoints]
+        );
+        const animateTo = (0, import_core.useEvent)((position2) => {
+          const current = animatedNumber.getValue();
+          if (isHidden && open)
+            return;
+          if (!current)
+            return;
+          if (frameSize === 0)
+            return;
+          const hiddenValue = frameSize === 0 ? HIDDEN_SIZE : frameSize;
+          const toValue = isHidden || position2 === -1 ? hiddenValue : positions[position2];
+          if (at.current === toValue)
+            return;
+          stopSpring();
+          if (isHidden || isResizing) {
+            if (isResizing) {
+              setIsResizing(false);
             }
-          }, [setPosition, shouldSetPositionOpen]);
-          const positions = (0, import_react.useMemo)(
-            () => snapPoints.map((point) => getPercentSize(point, frameSize)),
-            [frameSize, snapPoints]
-          );
-          const animateTo = (0, import_core.useEvent)((position2) => {
-            const current = animatedNumber.getValue();
-            if (isHidden && open)
-              return;
-            if (!current)
-              return;
-            if (frameSize === 0)
-              return;
-            const hiddenValue = frameSize === 0 ? HIDDEN_SIZE : frameSize;
-            const toValue = isHidden || position2 === -1 ? hiddenValue : positions[position2];
-            if (at.current === toValue)
-              return;
-            stopSpring();
-            if (isHidden || isResizing) {
-              if (isResizing) {
-                setIsResizing(false);
-              }
-              animatedNumber.setValue(toValue, {
-                type: "timing",
-                duration: 0
-              });
-              at.current = toValue;
-              return;
-            }
-            const overshootClamping = at.current === HIDDEN_SIZE;
             animatedNumber.setValue(toValue, {
-              ...animationConfig,
-              type: "spring",
-              overshootClamping
+              type: "timing",
+              duration: 0
             });
+            at.current = toValue;
+            return;
+          }
+          const overshootClamping = at.current === HIDDEN_SIZE;
+          animatedNumber.setValue(toValue, {
+            ...animationConfig,
+            type: "spring",
+            overshootClamping
           });
-          (0, import_core.useIsomorphicLayoutEffect)(() => {
-            animateTo(position);
-          }, [isHidden, frameSize, position, animateTo]);
-          const panResponder = (0, import_react.useMemo)(
-            () => {
-              if (disableDrag)
+        });
+        (0, import_core.useIsomorphicLayoutEffect)(() => {
+          animateTo(position);
+        }, [isHidden, frameSize, position, animateTo]);
+        const panResponder = (0, import_react.useMemo)(
+          () => {
+            if (disableDrag)
+              return;
+            if (!frameSize)
+              return;
+            const minY = positions[0];
+            scrollBridge.paneMinY = minY;
+            let startY = at.current;
+            function makeUnselectable(val) {
+              if (!selectionStyleSheet)
                 return;
-              if (!frameSize)
-                return;
-              const minY = positions[0];
-              scrollBridge.paneMinY = minY;
-              let startY = at.current;
-              function makeUnselectable(val) {
-                if (!selectionStyleSheet)
-                  return;
-                if (!val) {
-                  selectionStyleSheet.innerText = ``;
-                } else {
-                  selectionStyleSheet.innerText = `:root * { user-select: none !important; -webkit-user-select: none !important; }`;
+              if (!val) {
+                selectionStyleSheet.innerText = ``;
+              } else {
+                selectionStyleSheet.innerText = `:root * { user-select: none !important; -webkit-user-select: none !important; }`;
+              }
+            }
+            __name(makeUnselectable, "makeUnselectable");
+            const release = /* @__PURE__ */ __name(({ vy, dragAt }) => {
+              isExternalDrag = false;
+              previouslyScrolling = false;
+              makeUnselectable(false);
+              const at2 = dragAt + startY;
+              const end = at2 + frameSize * vy * 0.2;
+              let closestPoint = 0;
+              let dist = Infinity;
+              for (let i = 0; i < positions.length; i++) {
+                const position2 = positions[i];
+                const curDist = end > position2 ? end - position2 : position2 - end;
+                if (curDist < dist) {
+                  dist = curDist;
+                  closestPoint = i;
                 }
               }
-              __name(makeUnselectable, "makeUnselectable");
-              const release = /* @__PURE__ */ __name(({ vy, dragAt }) => {
-                isExternalDrag = false;
+              setPosition(closestPoint);
+              animateTo(closestPoint);
+            }, "release");
+            const finish = /* @__PURE__ */ __name((_e, state) => {
+              release({
+                vy: state.vy,
+                dragAt: state.dy
+              });
+            }, "finish");
+            let previouslyScrolling = false;
+            const onMoveShouldSet = /* @__PURE__ */ __name((_e, { dy }) => {
+              const isScrolled = scrollBridge.y !== 0;
+              const isDraggingUp = dy < 0;
+              const isAtTop = scrollBridge.paneY <= scrollBridge.paneMinY;
+              if (isScrolled) {
+                previouslyScrolling = true;
+                return false;
+              }
+              if (previouslyScrolling) {
                 previouslyScrolling = false;
-                makeUnselectable(false);
-                const at2 = dragAt + startY;
-                const end = at2 + frameSize * vy * 0.2;
-                let closestPoint = 0;
-                let dist = Infinity;
-                for (let i = 0; i < positions.length; i++) {
-                  const position2 = positions[i];
-                  const curDist = end > position2 ? end - position2 : position2 - end;
-                  if (curDist < dist) {
-                    dist = curDist;
-                    closestPoint = i;
-                  }
-                }
-                setPosition(closestPoint);
-                animateTo(closestPoint);
-              }, "release");
-              const finish = /* @__PURE__ */ __name((_e, state) => {
-                release({
-                  vy: state.vy,
-                  dragAt: state.dy
-                });
-              }, "finish");
-              let previouslyScrolling = false;
-              const onMoveShouldSet = /* @__PURE__ */ __name((_e, { dy }) => {
-                const isScrolled = scrollBridge.y !== 0;
-                const isDraggingUp = dy < 0;
-                const isAtTop = scrollBridge.paneY <= scrollBridge.paneMinY;
-                if (isScrolled) {
-                  previouslyScrolling = true;
+                return true;
+              }
+              if (isAtTop) {
+                if (!isScrolled && isDraggingUp) {
                   return false;
                 }
-                if (previouslyScrolling) {
-                  previouslyScrolling = false;
-                  return true;
-                }
-                if (isAtTop) {
-                  if (!isScrolled && isDraggingUp) {
-                    return false;
-                  }
-                }
-                return Math.abs(dy) > 5;
-              }, "onMoveShouldSet");
-              const grant = /* @__PURE__ */ __name(() => {
-                makeUnselectable(true);
-                stopSpring();
-                startY = at.current;
-              }, "grant");
-              let isExternalDrag = false;
-              scrollBridge.drag = (dy) => {
-                if (!isExternalDrag) {
-                  isExternalDrag = true;
-                  grant();
-                }
-                const to = dy + startY;
-                animatedNumber.setValue(resisted(to, minY), { type: "direct" });
-              };
-              scrollBridge.release = release;
-              return import_react_native3.PanResponder.create({
-                onMoveShouldSetPanResponder: onMoveShouldSet,
-                onPanResponderGrant: grant,
-                onPanResponderMove: (_e, { dy }) => {
-                  const toFull = dy + startY;
-                  const to = resisted(toFull, minY);
-                  animatedNumber.setValue(to, { type: "direct" });
-                },
-                onPanResponderEnd: finish,
-                onPanResponderTerminate: finish,
-                onPanResponderRelease: finish
-              });
-            },
-            [disableDrag, animateTo, frameSize, positions, setPosition]
-          );
-          let handleComponent = null;
-          let overlayComponent = null;
-          let frameComponent = null;
-          import_react.default.Children.forEach(childrenProp, (child) => {
-            var _a, _b;
-            if ((0, import_react.isValidElement)(child)) {
-              const name = (_b = (_a = child.type) == null ? void 0 : _a["staticConfig"]) == null ? void 0 : _b.componentName;
-              switch (name) {
-                case "SheetHandle":
-                  handleComponent = child;
-                  break;
-                case "Sheet":
-                  frameComponent = child;
-                  break;
-                case "SheetOverlay":
-                  overlayComponent = child;
-                  break;
-                default:
-                  console.warn("Warning: passed invalid child to Sheet", child);
               }
+              return Math.abs(dy) > 5;
+            }, "onMoveShouldSet");
+            const grant = /* @__PURE__ */ __name(() => {
+              makeUnselectable(true);
+              stopSpring();
+              startY = at.current;
+            }, "grant");
+            let isExternalDrag = false;
+            scrollBridge.drag = (dy) => {
+              if (!isExternalDrag) {
+                isExternalDrag = true;
+                grant();
+              }
+              const to = dy + startY;
+              animatedNumber.setValue(resisted(to, minY), { type: "direct" });
+            };
+            scrollBridge.release = release;
+            return import_react_native3.PanResponder.create({
+              onMoveShouldSetPanResponder: onMoveShouldSet,
+              onPanResponderGrant: grant,
+              onPanResponderMove: (_e, { dy }) => {
+                const toFull = dy + startY;
+                const to = resisted(toFull, minY);
+                animatedNumber.setValue(to, { type: "direct" });
+              },
+              onPanResponderEnd: finish,
+              onPanResponderTerminate: finish,
+              onPanResponderRelease: finish
+            });
+          },
+          [disableDrag, animateTo, frameSize, positions, setPosition]
+        );
+        let handleComponent = null;
+        let overlayComponent = null;
+        let frameComponent = null;
+        import_react.default.Children.forEach(childrenProp, (child) => {
+          var _a, _b;
+          if ((0, import_react.isValidElement)(child)) {
+            const name = (_b = (_a = child.type) == null ? void 0 : _a["staticConfig"]) == null ? void 0 : _b.componentName;
+            switch (name) {
+              case "SheetHandle":
+                handleComponent = child;
+                break;
+              case "Sheet":
+                frameComponent = child;
+                break;
+              case "SheetOverlay":
+                overlayComponent = child;
+                break;
+              default:
+                console.warn("Warning: passed invalid child to Sheet", child);
             }
-          });
-          const preventShown = (controller == null ? void 0 : controller.hidden) && (controller == null ? void 0 : controller.open);
-          const animatedStyle = driver.useAnimatedNumberStyle(animatedNumber, (val) => {
-            return {
-              transform: [{ translateY: frameSize === 0 ? HIDDEN_SIZE : val }]
-            };
-          });
-          const AnimatedView = driver["NumberView"] ?? driver.View;
-          const [isShowingInnerSheet, setIsShowingInnerSheet] = (0, import_react.useState)(false);
-          const shouldHideParentSheet = !import_core.isWeb && modal && isShowingInnerSheet;
-          const parentSheetContext = (0, import_react.useContext)(SheetInsideSheetContext);
-          const onInnerSheet = (0, import_react.useCallback)((hasChild) => {
-            setIsShowingInnerSheet(hasChild);
-          }, []);
-          (0, import_core.useIsomorphicLayoutEffect)(() => {
-            if (!parentSheetContext || !open)
-              return;
-            parentSheetContext(true);
-            return () => {
-              parentSheetContext(false);
-            };
-          }, [parentSheetContext, open]);
-          const nextParentContext = (0, import_react.useMemo)(
-            () => ({
-              zIndex
-            }),
-            [zIndex]
-          );
-          const contents = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ParentSheetContext.Provider, {
-            value: nextParentContext,
-            children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_SheetContext.SheetProvider, {
-              modal,
-              contentRef,
-              dismissOnOverlayPress,
-              dismissOnSnapToBottom,
-              open,
-              hidden: isHidden,
-              scope: __scopeSheet,
-              position,
-              snapPoints,
-              setPosition,
-              setOpen,
-              scrollBridge,
-              children: [
-                isResizing || shouldHideParentSheet ? null : overlayComponent,
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(AnimatedView, {
-                  ref,
-                  ...panResponder == null ? void 0 : panResponder.panHandlers,
-                  onLayout: (e) => {
-                    const next = e.nativeEvent.layout.height;
-                    setFrameSize((prev) => {
-                      const isBigChange = Math.abs(prev - next) > 50;
-                      setIsResizing(isBigChange);
-                      return next;
-                    });
+          }
+        });
+        const animatedStyle = driver.useAnimatedNumberStyle(animatedNumber, (val) => {
+          return {
+            transform: [{ translateY: frameSize === 0 ? HIDDEN_SIZE : val }]
+          };
+        });
+        const AnimatedView = driver["NumberView"] ?? driver.View;
+        const [isShowingInnerSheet, setIsShowingInnerSheet] = (0, import_react.useState)(false);
+        const shouldHideParentSheet = !import_core.isWeb && modal && isShowingInnerSheet;
+        const parentSheetContext = (0, import_react.useContext)(SheetInsideSheetContext);
+        const onInnerSheet = (0, import_react.useCallback)((hasChild) => {
+          setIsShowingInnerSheet(hasChild);
+        }, []);
+        (0, import_core.useIsomorphicLayoutEffect)(() => {
+          if (!parentSheetContext || !open)
+            return;
+          parentSheetContext(true);
+          return () => {
+            parentSheetContext(false);
+          };
+        }, [parentSheetContext, open]);
+        const nextParentContext = (0, import_react.useMemo)(
+          () => ({
+            zIndex
+          }),
+          [zIndex]
+        );
+        const contents = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ParentSheetContext.Provider, {
+          value: nextParentContext,
+          children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_SheetContext.SheetProvider, {
+            modal,
+            contentRef,
+            dismissOnOverlayPress,
+            dismissOnSnapToBottom,
+            open,
+            hidden: isHidden,
+            scope: __scopeSheet,
+            position,
+            snapPoints,
+            setPosition,
+            setOpen,
+            scrollBridge,
+            children: [
+              isResizing || shouldHideParentSheet ? null : overlayComponent,
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(AnimatedView, {
+                ref,
+                ...panResponder == null ? void 0 : panResponder.panHandlers,
+                onLayout: (e) => {
+                  const next = e.nativeEvent.layout.height;
+                  setFrameSize((prev) => {
+                    const isBigChange = Math.abs(prev - next) > 50;
+                    setIsResizing(isBigChange);
+                    return next;
+                  });
+                },
+                pointerEvents: open && !shouldHideParentSheet ? "auto" : "none",
+                style: [
+                  {
+                    position: "absolute",
+                    zIndex,
+                    width: "100%",
+                    height: "100%",
+                    opacity: shouldHideParentSheet ? 0 : 1
                   },
-                  pointerEvents: open && !shouldHideParentSheet ? "auto" : "none",
-                  style: [
-                    {
-                      position: "absolute",
-                      zIndex,
-                      width: "100%",
-                      height: "100%",
-                      opacity: shouldHideParentSheet ? 0 : 1
-                    },
-                    animatedStyle
-                  ],
-                  children: [
-                    handleComponent,
-                    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_remove_scroll.RemoveScroll, {
-                      enabled: open && modal && handleDisableScroll,
-                      as: import_core.Slot,
-                      allowPinchZoom: true,
-                      shards: [contentRef],
-                      removeScrollBar: false,
-                      children: isResizing ? null : frameComponent
-                    })
-                  ]
-                })
-              ]
+                  animatedStyle
+                ],
+                children: [
+                  handleComponent,
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_remove_scroll.RemoveScroll, {
+                    enabled: open && modal && handleDisableScroll,
+                    as: import_core.Slot,
+                    allowPinchZoom: true,
+                    shards: [contentRef],
+                    removeScrollBar: false,
+                    children: isResizing ? null : frameComponent
+                  })
+                ]
+              })
+            ]
+          })
+        });
+        if (modal) {
+          const modalContents = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_portal.Portal, {
+            zIndex,
+            children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_core.Theme, {
+              name: themeName,
+              children: contents
             })
           });
-          if (preventShown) {
-            return null;
+          if (import_core.isWeb) {
+            return modalContents;
           }
-          if (modal) {
-            const modalContents = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_portal.Portal, {
-              zIndex,
-              children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_core.Theme, {
-                name: themeName,
-                children: contents
-              })
-            });
-            if (import_core.isWeb) {
-              return modalContents;
-            }
-            return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SheetInsideSheetContext.Provider, {
-              value: onInnerSheet,
-              children: modalContents
-            });
-          }
-          return contents;
-        }, "Sheet2"))
-      ),
-      sheetComponents
+          return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SheetInsideSheetContext.Provider, {
+            value: onInnerSheet,
+            children: modalContents
+          });
+        }
+        return contents;
+      }, "SheetImplementation2"))
     );
     var SheetInsideSheetContext = (0, import_react.createContext)(null);
     var ControlledSheet = Sheet;
